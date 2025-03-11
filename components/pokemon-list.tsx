@@ -70,6 +70,12 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
   }
 
   useEffect(() => {
+    // Limpiar el estado cuando se monta el componente
+    setAllPokemon([])
+    setNextUrl("https://pokeapi.co/api/v2/pokemon?limit=20")
+    setPokemonDetails({})
+    setSelectedForCompare([])
+    
     fetchPokemon()
   }, [])
 
@@ -314,4 +320,3 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     </div>
   )
 }
-
