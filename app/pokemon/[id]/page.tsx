@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Loader2, ChevronRight } from "lucide-react"
+import { useParams } from "next/navigation"
 
 interface PokemonDetails {
   id: number
@@ -101,7 +102,10 @@ interface EvolutionPokemon {
   level?: number
 }
 
-export default function PokemonDetailPage({ params }: { params: { id: string } }) {
+export default function PokemonDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+  
   const [pokemon, setPokemon] = useState<PokemonDetails | null>(null)
   const [species, setSpecies] = useState<Species | null>(null)
   const [evolutionChain, setEvolutionChain] = useState<EvolutionPokemon[]>([])
@@ -112,7 +116,7 @@ export default function PokemonDetailPage({ params }: { params: { id: string } }
     const fetchPokemonDetails = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${params.id}`)
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`)
         const data = await response.json()
         setPokemon(data)
 
@@ -183,7 +187,7 @@ export default function PokemonDetailPage({ params }: { params: { id: string } }
     }
 
     fetchPokemonDetails()
-  }, [params.id])
+  }, [id])
 
   // Extraer ID de la URL
   const extractIdFromUrl = (url: string) => {
@@ -447,7 +451,7 @@ export default function PokemonDetailPage({ params }: { params: { id: string } }
                           <Link href={`/pokemon/${evo.id}`}>
                             <div
                               className={`flex flex-col items-center p-2 rounded-lg ${
-                                evo.id.toString() === params.id ? "bg-gray-800 border border-gray-700" : ""
+                                evo.id.toString() === id ? "bg-gray-800 border border-gray-700" : ""
                               }`}
                             >
                               <div className="relative h-20 w-20">
@@ -476,4 +480,3 @@ export default function PokemonDetailPage({ params }: { params: { id: string } }
     </main>
   )
 }
-
