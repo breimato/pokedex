@@ -407,6 +407,17 @@ export default function PokemonDetailPage() {
                       return "bg-green-500"
                     }
 
+                    // Crear un estilo personalizado para el indicador de progreso
+                    const getProgressStyle = (value: number) => {
+                      let color = "#ef4444"; // red-500
+                      if (value >= 80) color = "#22c55e"; // green-500
+                      else if (value >= 50) color = "#eab308"; // yellow-500
+                      
+                      return {
+                        "--progress-color": color,
+                      } as React.CSSProperties;
+                    }
+
                     return (
                       <div key={stat.stat.name}>
                         <div className="flex justify-between mb-1">
@@ -416,8 +427,8 @@ export default function PokemonDetailPage() {
                         <Progress
                           value={stat.base_stat}
                           max={255}
-                          className="h-2 bg-gray-700"
-                          indicatorClassName={getStatColor(stat.base_stat)}
+                          className="h-2 bg-gray-700 [&>div]:!bg-[var(--progress-color)]"
+                          style={getProgressStyle(stat.base_stat)}
                         />
                       </div>
                     )

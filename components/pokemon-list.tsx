@@ -50,6 +50,9 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
   const [compareMode, setCompareMode] = useState(false)
   const [selectedForCompare, setSelectedForCompare] = useState<PokemonDetails[]>([])
   const [showCompareModal, setShowCompareModal] = useState(false)
+  
+  // Clave para forzar la remontada del componente y evitar duplicados
+  const [key, setKey] = useState(Date.now())
 
   const fetchPokemon = async () => {
     if (!nextUrl) return
@@ -59,7 +62,11 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
       const response = await fetch(nextUrl)
       const data: PokemonListResponse = await response.json()
 
-      setAllPokemon((prev) => [...prev, ...data.results])
+      // Usar un Set para eliminar duplicados basados en el nombre
+      const existingNames = new Set(allPokemon.map(p => p.name))
+      const newPokemon = data.results.filter(p => !existingNames.has(p.name))
+      
+      setAllPokemon((prev) => [...prev, ...newPokemon])
       setNextUrl(data.next)
     } catch (error) {
       console.error("Error fetching Pokémon:", error)
@@ -69,14 +76,27 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     }
   }
 
+  // Efecto para reiniciar el estado cuando cambia la clave
   useEffect(() => {
-    // Limpiar el estado cuando se monta el componente
     setAllPokemon([])
     setNextUrl("https://pokeapi.co/api/v2/pokemon?limit=20")
     setPokemonDetails({})
     setSelectedForCompare([])
+    setCompareMode(false)
+    setShowCompareModal(false)
+    setInitialLoading(true)
     
     fetchPokemon()
+  }, [key])
+
+  // Efecto para detectar cuando el componente se monta/desmonta
+  useEffect(() => {
+    // Cuando el componente se monta, generar una nueva clave para forzar un estado fresco
+    setKey(Date.now())
+    
+    return () => {
+      // Cleanup cuando el componente se desmonta
+    }
   }, [])
 
   // Efecto para cargar todos los Pokémon cuando se aplica un filtro
@@ -92,14 +112,19 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
           const data = await response.json()
 
           // Al cargar todos, ya no necesitamos la paginación
-          setAllPokemon(data.results)
+          // Asegurarnos de que no hay duplicados
+          const uniqueResults = data.results.filter((pokemon: Pokemon, index: number, self: Pokemon[]) => 
+            index === self.findIndex((p) => p.name === pokemon.name)
+          );
+          
+          setAllPokemon(uniqueResults)
           setNextUrl(null)
 
           // Si hay filtro de tipo, necesitamos cargar detalles para todos
           if (filters.types.length > 0) {
             // Cargamos los 100 primeros detalles para filtrar por tipo
             // (podríamos optimizar esto más adelante)
-            const detailsPromises = data.results.slice(0, 300).map(async (pokemon: Pokemon) => {
+            const detailsPromises = uniqueResults.slice(0, 300).map(async (pokemon: Pokemon) => {
               try {
                 const response = await fetch(pokemon.url)
                 const pokemonData = await response.json()
@@ -155,10 +180,21 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     return selectedForCompare.some((p) => p.id === pokemonId)
   }
 
-  // Filtrar Pokémon basado en el término de búsqueda y filtros
+  // Filtrar Pokémon según la búsqueda y filtros
   const filteredPokemon = useMemo(() => {
+    // Crear un Set con los nombres de los Pokémon para evitar duplicados
+    const uniqueNames = new Set<string>()
+    const uniquePokemon: Pokemon[] = []
+    
+    for (const pokemon of allPokemon) {
+      if (!uniqueNames.has(pokemon.name)) {
+        uniqueNames.add(pokemon.name)
+        uniquePokemon.push(pokemon)
+      }
+    }
+    
     // Primero filtramos por término de búsqueda
-    let filtered = allPokemon
+    let filtered = uniquePokemon
 
     if (searchTerm) {
       filtered = filtered.filter((pokemon) => pokemon.name.includes(searchTerm.toLowerCase()))
