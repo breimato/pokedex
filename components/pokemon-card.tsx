@@ -59,23 +59,63 @@ export function PokemonCard({ name, url, onCompare, isInCompare = false, onLoad 
 
   // Modificar el useEffect para llamar a onLoad cuando se cargan los detalles
   useEffect(() => {
-    const fetchPokemonDetails = async () => {
+    // Mantener un registro de si el componente está montado
+    let isMounted = true;
+    // Número máximo de reintentos
+    const maxRetries = 3;
+    
+    const fetchPokemonDetails = async (retryCount = 0) => {
+      // Si ya se desmontó el componente, no hacemos nada
+      if (!isMounted) return;
+      
       try {
-        const response = await fetch(url)
-        const data = await response.json()
-        setPokemon(data)
-        if (onLoad) {
-          onLoad(data)
+        // Añadimos un pequeño retraso aleatorio para evitar muchas solicitudes simultáneas
+        const delay = Math.random() * 300;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Solo actualizamos el estado si el componente sigue montado
+        if (isMounted) {
+          setPokemon(data);
+          
+          if (onLoad) {
+            onLoad(data);
+          }
         }
       } catch (error) {
-        console.error(`Error fetching details for ${name}:`, error)
+        console.error(`Error fetching details for ${name}:`, error);
+        
+        // Reintentamos si no hemos alcanzado el máximo de reintentos
+        if (retryCount < maxRetries && isMounted) {
+          console.log(`Retrying fetch for ${name} (${retryCount + 1}/${maxRetries})`);
+          // Esperamos un tiempo incremental antes de reintentar
+          const retryDelay = Math.pow(2, retryCount) * 1000 + Math.random() * 1000;
+          setTimeout(() => {
+            fetchPokemonDetails(retryCount + 1);
+          }, retryDelay);
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    }
+    };
 
-    fetchPokemonDetails()
-  }, [name, url, onLoad])
+    // Iniciamos la carga
+    fetchPokemonDetails();
+    
+    // Limpieza cuando el componente se desmonta
+    return () => {
+      isMounted = false;
+    };
+  }, [name, url, onLoad]);
 
   const getTypeColor = (type: string) => {
     const typeColors: Record<string, string> = {
@@ -203,4 +243,3 @@ export function PokemonCard({ name, url, onCompare, isInCompare = false, onLoad 
     </Link>
   )
 }
-

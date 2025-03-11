@@ -53,6 +53,15 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
   
   // Clave para forzar la remontada del componente y evitar duplicados
   const [key, setKey] = useState(Date.now())
+  
+  // Estado para rastrear si los filtros están aplicados
+  const [filtersApplied, setFiltersApplied] = useState(false)
+  
+  // Referencia para almacenar los Pokémon iniciales que se cargan al abrir la app
+  const [initialPokemonState, setInitialPokemonState] = useState<{
+    pokemon: Pokemon[],
+    nextUrl: string | null
+  }>({ pokemon: [], nextUrl: null })
 
   const fetchPokemon = async () => {
     if (!nextUrl) return
@@ -66,8 +75,17 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
       const existingNames = new Set(allPokemon.map(p => p.name))
       const newPokemon = data.results.filter(p => !existingNames.has(p.name))
       
-      setAllPokemon((prev) => [...prev, ...newPokemon])
+      const updatedPokemon = [...allPokemon, ...newPokemon]
+      setAllPokemon(updatedPokemon)
       setNextUrl(data.next)
+      
+      // Si es la primera carga, guardamos este estado como el inicial
+      if (initialLoading && !filtersApplied) {
+        setInitialPokemonState({ 
+          pokemon: updatedPokemon, 
+          nextUrl: data.next 
+        })
+      }
     } catch (error) {
       console.error("Error fetching Pokémon:", error)
     } finally {
@@ -85,6 +103,7 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     setCompareMode(false)
     setShowCompareModal(false)
     setInitialLoading(true)
+    setFiltersApplied(false)
     
     fetchPokemon()
   }, [key])
@@ -99,84 +118,217 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     }
   }, [])
 
-  // Efecto para cargar todos los Pokémon cuando se aplica un filtro
-  useEffect(() => {
-    const fetchAllPokemon = async () => {
-      // Solo cargamos todos los Pokémon si se aplica un filtro y no tenemos muchos Pokémon cargados
-      if ((filters.types.length > 0 || filters.generations.length > 0) && allPokemon.length < 300) {
-        setIsFilterLoading(true)
+  // Rango de ID de Pokémon por generación
+  const generationRanges = {
+    1: { start: 1, end: 151 },     // Kanto
+    2: { start: 152, end: 251 },   // Johto
+    3: { start: 252, end: 386 },   // Hoenn
+    4: { start: 387, end: 493 },   // Sinnoh
+    5: { start: 494, end: 649 },   // Unova
+    6: { start: 650, end: 721 },   // Kalos
+    7: { start: 722, end: 809 },   // Alola
+    8: { start: 810, end: 905 },   // Galar
+    9: { start: 906, end: 1010 },  // Paldea
+  }
 
+  // Función para obtener el ID de un Pokémon desde su URL
+  const getPokemonIdFromUrl = (url: string): number => {
+    const urlParts = url.split('/')
+    return parseInt(urlParts[urlParts.length - 2])
+  }
+
+  // Filtrar por generación sin cargar todos los detalles
+  const filterByGeneration = (pokemon: Pokemon[], generations: number[]): Pokemon[] => {
+    if (generations.length === 0) return pokemon
+    
+    return pokemon.filter(p => {
+      const id = getPokemonIdFromUrl(p.url)
+      return generations.some(gen => 
+        id >= generationRanges[gen as keyof typeof generationRanges].start && 
+        id <= generationRanges[gen as keyof typeof generationRanges].end
+      )
+    })
+  }
+
+  // Función para cargar detalles de Pokémon
+  const loadPokemonDetails = async (pokemonList: Pokemon[]) => {
+    // Limitamos a 50 para evitar demasiadas solicitudes
+    const limitedList = pokemonList.slice(0, 50)
+    
+    // Procesamos en grupos más pequeños para evitar sobrecargar la API
+    const batchSize = 10;
+    let newDetails: Record<string, PokemonDetails> = {};
+    
+    for (let i = 0; i < limitedList.length; i += batchSize) {
+      const batch = limitedList.slice(i, i + batchSize);
+      
+      const detailsPromises = batch.map(async (pokemon: Pokemon) => {
+        // Evitamos cargar detalles que ya tenemos
+        if (pokemonDetails[pokemon.name]) return { pokemon: pokemonDetails[pokemon.name], cached: true };
+        
         try {
-          // Cargamos todos los Pokémon (o un número alto)
-          const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=600")
-          const data = await response.json()
-
-          // Al cargar todos, ya no necesitamos la paginación
-          // Asegurarnos de que no hay duplicados
-          const uniqueResults = data.results.filter((pokemon: Pokemon, index: number, self: Pokemon[]) => 
-            index === self.findIndex((p) => p.name === pokemon.name)
-          );
-          
-          setAllPokemon(uniqueResults)
-          setNextUrl(null)
-
-          // Si hay filtro de tipo, necesitamos cargar detalles para todos
-          if (filters.types.length > 0) {
-            // Cargamos los 100 primeros detalles para filtrar por tipo
-            // (podríamos optimizar esto más adelante)
-            const detailsPromises = uniqueResults.slice(0, 300).map(async (pokemon: Pokemon) => {
-              try {
-                const response = await fetch(pokemon.url)
-                const pokemonData = await response.json()
-                return pokemonData
-              } catch (error) {
-                console.error(`Error fetching details for ${pokemon.name}:`, error)
-                return null
-              }
-            })
-
-            const detailsResults = await Promise.all(detailsPromises)
-            const newDetails: Record<string, PokemonDetails> = {}
-
-            detailsResults.forEach((pokemon) => {
-              if (pokemon) {
-                newDetails[pokemon.name] = pokemon
-              }
-            })
-
-            setPokemonDetails((prev) => ({ ...prev, ...newDetails }))
+          const response = await fetch(pokemon.url);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
+          const pokemonData = await response.json();
+          return { pokemon: pokemonData, cached: false };
         } catch (error) {
-          console.error("Error fetching all Pokémon:", error)
-        } finally {
-          setIsFilterLoading(false)
+          console.error(`Error fetching details for ${pokemon.name}:`, error);
+          return null;
         }
+      });
+
+      const batchResults = await Promise.all(detailsPromises);
+      
+      for (const result of batchResults) {
+        if (result && result.pokemon) {
+          newDetails[result.pokemon.name] = result.pokemon;
+        }
+      }
+      
+      // Pequeña pausa entre lotes para no sobrecargar la API
+      if (i + batchSize < limitedList.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
-    fetchAllPokemon()
-  }, [filters, allPokemon.length])
+    // Solo actualizamos el estado una vez con todos los detalles nuevos
+    setPokemonDetails(prev => {
+      // Evitamos actualizar si no hay cambios reales
+      if (Object.keys(newDetails).length === 0) return prev;
+      return { ...prev, ...newDetails };
+    });
+    
+    return newDetails;
+  }
+
+  // Efecto para cargar Pokémon específicos de una generación cuando se aplica el filtro
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchPokemonByGeneration = async () => {
+      // Solo si hay filtros de generación
+      if (filters.generations.length > 0) {
+        setIsFilterLoading(true);
+        setFiltersApplied(true);
+        
+        try {
+          const promises: Promise<PokemonListResponse>[] = [];
+          
+          // Para cada generación seleccionada, cargamos el rango correspondiente
+          for (const gen of filters.generations) {
+            const range = generationRanges[gen as keyof typeof generationRanges];
+            const limit = range.end - range.start + 1;
+            const offset = range.start - 1;
+            
+            promises.push(
+              fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`)
+                .then(res => {
+                  if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                  }
+                  return res.json();
+                })
+            );
+          }
+          
+          const results = await Promise.all(promises);
+          
+          // Combinamos todos los resultados
+          let allResults: Pokemon[] = [];
+          for (const result of results) {
+            allResults = [...allResults, ...result.results];
+          }
+          
+          // Eliminamos duplicados
+          const uniquePokemon = allResults.filter((pokemon, index, self) => 
+            index === self.findIndex(p => p.name === pokemon.name)
+          );
+          
+          if (isMounted) {
+            setAllPokemon(uniquePokemon);
+            setNextUrl(null); // Desactivamos la paginación con filtros
+            
+            // Si también hay filtros de tipo, cargamos los detalles necesarios
+            if (filters.types.length > 0 && isMounted) {
+              await loadPokemonDetails(uniquePokemon);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching Pokémon by generation:", error);
+        } finally {
+          if (isMounted) {
+            setIsFilterLoading(false);
+          }
+        }
+      } else if (filters.types.length > 0 && !filtersApplied) {
+        // Si solo hay filtros de tipo pero no de generación
+        setFiltersApplied(true);
+        setIsFilterLoading(true);
+        
+        try {
+          // Cargamos un lote más grande pero no todos
+          const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=50");
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          const uniquePokemon = data.results.filter((pokemon: Pokemon, index: number, self: Pokemon[]) => 
+            index === self.findIndex(p => p.name === pokemon.name)
+          );
+          
+          if (isMounted) {
+            setAllPokemon(uniquePokemon);
+            setNextUrl(data.next);
+            
+            // Cargamos los detalles para filtrar por tipo
+            await loadPokemonDetails(uniquePokemon);
+          }
+        } catch (error) {
+          console.error("Error fetching Pokémon for type filter:", error);
+        } finally {
+          if (isMounted) {
+            setIsFilterLoading(false);
+          }
+        }
+      } else if (filtersApplied && filters.types.length === 0 && filters.generations.length === 0 && isMounted) {
+        // Si se quitan todos los filtros, volvemos al estado inicial
+        setFiltersApplied(false);
+        setAllPokemon(initialPokemonState.pokemon);
+        setNextUrl(initialPokemonState.nextUrl);
+      }
+    };
+    
+    fetchPokemonByGeneration();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [filters.generations, filters.types]);
 
   // Manejar la selección para comparar
   const handleCompare = (pokemon: PokemonDetails) => {
     setSelectedForCompare((prev) => {
-      // Si ya está seleccionado, quitarlo
+      // Si ya está seleccionado, lo quitamos
       if (prev.some((p) => p.id === pokemon.id)) {
         return prev.filter((p) => p.id !== pokemon.id)
       }
 
-      // Si ya hay 2 seleccionados, reemplazar el último
+      // Si ya hay 2 Pokémon seleccionados, reemplazamos el primero
       if (prev.length >= 2) {
-        return [prev[0], pokemon]
+        return [prev[1], pokemon]
       }
 
-      // Añadir a la selección
+      // Añadimos el Pokémon
       return [...prev, pokemon]
     })
   }
 
-  // Verificar si un Pokémon está en la selección para comparar
-  const isInCompare = (pokemonId: number) => {
+  const isPokemonSelected = (pokemonId: number) => {
     return selectedForCompare.some((p) => p.id === pokemonId)
   }
 
@@ -200,54 +352,95 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
       filtered = filtered.filter((pokemon) => pokemon.name.includes(searchTerm.toLowerCase()))
     }
 
-    // Si no hay filtros adicionales, devolvemos los resultados
-    if (filters.types.length === 0 && filters.generations.length === 0) {
-      return filtered
-    }
-
-    // Filtramos por generación basado en el ID
-    if (filters.generations.length > 0) {
+    // Filtramos por tipo si hay detalles cargados y tipos seleccionados
+    if (filters.types.length > 0 && Object.keys(pokemonDetails).length > 0) {
       filtered = filtered.filter((pokemon) => {
-        // Extraer ID de la URL
-        const url = pokemon.url
-        const parts = url.split("/")
-        const id = Number.parseInt(parts[parts.length - 2])
+        const details = pokemonDetails[pokemon.name]
+        // Si no tenemos detalles, no podemos filtrar
+        if (!details) return false
 
-        // Verificar si pertenece a alguna de las generaciones seleccionadas
-        return filters.generations.some((genId) => {
-          const gen = GENERATIONS.find((g) => g.id === genId)
-          return gen && id >= gen.range[0] && id <= gen.range[1]
-        })
+        // Verificamos si alguno de los tipos del Pokémon está en la lista de tipos seleccionados
+        return details.types.some((type) =>
+          filters.types.includes(type.type.name)
+        )
       })
     }
 
-    // Si no hay filtros de tipo, devolvemos los resultados
-    if (filters.types.length === 0) {
-      return filtered
-    }
+    return filtered
+  }, [allPokemon, searchTerm, filters.types, pokemonDetails])
 
-    // Necesitamos detalles para filtrar por tipo
-    return filtered.filter((pokemon) => {
-      const details = pokemonDetails[pokemon.name]
-      if (!details) return false
+  // Obtener todos los tipos disponibles a partir de los detalles cargados
+  const availableTypes = useMemo(() => {
+    const types = new Set<string>()
 
-      // Filtrar por tipo
-      return details.types.some((t) => filters.types.includes(t.type.name))
+    Object.values(pokemonDetails).forEach((pokemon) => {
+      pokemon.types.forEach((type) => {
+        types.add(type.type.name)
+      })
     })
-  }, [allPokemon, searchTerm, filters, pokemonDetails])
 
-  // Actualizar los detalles de Pokémon cuando se reciben
-  const updatePokemonDetails = (pokemon: PokemonDetails) => {
-    setPokemonDetails((prev) => ({
-      ...prev,
-      [pokemon.name]: pokemon,
-    }))
+    return Array.from(types).sort()
+  }, [pokemonDetails])
+
+  const toggleFilter = (type: string) => {
+    setFilters((prev) => {
+      if (prev.types.includes(type)) {
+        return {
+          ...prev,
+          types: prev.types.filter((t) => t !== type),
+        }
+      } else {
+        return {
+          ...prev,
+          types: [...prev.types, type],
+        }
+      }
+    })
+  }
+
+  const toggleGeneration = (generation: number) => {
+    setFilters((prev) => {
+      if (prev.generations.includes(generation)) {
+        return {
+          ...prev,
+          generations: prev.generations.filter((g) => g !== generation),
+        }
+      } else {
+        return {
+          ...prev,
+          generations: [...prev.generations, generation],
+        }
+      }
+    })
+  }
+
+  const handleLoadMore = () => {
+    fetchPokemon()
+  }
+
+  const handleStartCompare = () => {
+    setCompareMode(true)
+  }
+
+  const handleStopCompare = () => {
+    setCompareMode(false)
+    setSelectedForCompare([])
+  }
+
+  const handleShowCompare = () => {
+    setShowCompareModal(true)
+  }
+
+  const handleCloseCompare = () => {
+    setShowCompareModal(false)
   }
 
   if (initialLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+        <div className="animate-bounce w-16 h-16">
+          <Loader2 className="w-full h-full text-red-500" />
+        </div>
       </div>
     )
   }
@@ -326,9 +519,14 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
                 url={pokemon.url}
                 onCompare={compareMode ? handleCompare : undefined}
                 isInCompare={
-                  compareMode && pokemonDetails[pokemon.name] ? isInCompare(pokemonDetails[pokemon.name].id) : false
+                  compareMode && pokemonDetails[pokemon.name] ? isPokemonSelected(pokemonDetails[pokemon.name].id) : false
                 }
-                onLoad={updatePokemonDetails}
+                onLoad={(pokemon) => {
+                  setPokemonDetails((prev) => ({
+                    ...prev,
+                    [pokemon.name]: pokemon,
+                  }))
+                }}
               />
             ))}
           </div>
@@ -339,7 +537,7 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
             filters.generations.length === 0 &&
             !isFilterLoading && (
               <div className="flex justify-center mt-8">
-                <Button onClick={fetchPokemon} disabled={loading} className="bg-red-600 hover:bg-red-700">
+                <Button onClick={handleLoadMore} disabled={loading} className="bg-red-600 hover:bg-red-700">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
