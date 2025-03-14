@@ -268,28 +268,58 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
         setIsFilterLoading(true);
         
         try {
-          // Cargamos un lote más grande pero no todos
-          const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=50");
+          // Usar el endpoint de tipo directamente para obtener todos los Pokémon de ese tipo
+          const typePromises = filters.types.map(type => 
+            fetch(`https://pokeapi.co/api/v2/type/${type}`)
+              .then(res => {
+                if (!res.ok) {
+                  throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+              })
+          );
           
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+          const typeResults = await Promise.all(typePromises);
+          
+          // Combinamos todos los Pokémon de los tipos seleccionados
+          let pokemonByType: { name: string, url: string }[] = [];
+          
+          for (const typeResult of typeResults) {
+            // Convertimos los resultados al formato que esperamos (Pokemon[])
+            const typePokemon = typeResult.pokemon.map((entry: { pokemon: { name: string, url: string } }) => ({
+              name: entry.pokemon.name,
+              url: entry.pokemon.url
+            }));
+            
+            pokemonByType = [...pokemonByType, ...typePokemon];
           }
           
-          const data = await response.json();
-          
-          const uniquePokemon = data.results.filter((pokemon: Pokemon, index: number, self: Pokemon[]) => 
+          // Eliminamos duplicados si hay varios tipos seleccionados
+          const uniquePokemon = pokemonByType.filter((pokemon, index, self) => 
             index === self.findIndex(p => p.name === pokemon.name)
           );
           
           if (isMounted) {
             setAllPokemon(uniquePokemon);
-            setNextUrl(data.next);
+            setNextUrl(null); // Desactivamos la paginación con filtros
             
-            // Cargamos los detalles para filtrar por tipo
-            await loadPokemonDetails(uniquePokemon);
+            // Solo cargamos los detalles de los primeros 50 Pokémon para mostrar inmediatamente
+            const initialPokemonToLoad = uniquePokemon.slice(0, 50);
+            await loadPokemonDetails(initialPokemonToLoad);
+            
+            // Si hay más de 50, cargamos el resto en segundo plano para no bloquear la UI
+            if (uniquePokemon.length > 50 && isMounted) {
+              const remainingPokemon = uniquePokemon.slice(50);
+              // Esto se ejecutará en segundo plano sin bloquear
+              setTimeout(() => {
+                if (isMounted) {
+                  loadPokemonDetails(remainingPokemon);
+                }
+              }, 500);
+            }
           }
         } catch (error) {
-          console.error("Error fetching Pokémon for type filter:", error);
+          console.error("Error fetching Pokémon by type:", error);
         } finally {
           if (isMounted) {
             setIsFilterLoading(false);
@@ -416,6 +446,20 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
 
   const handleLoadMore = () => {
     fetchPokemon()
+  }
+
+  const handleLoadMoreTypeResults = () => {
+    // Esta función cargará los detalles de más Pokémon por tipo
+    // cuando el usuario quiere ver más resultados
+    const loadedNames = Object.keys(pokemonDetails);
+    const remainingPokemon = allPokemon.filter(p => !loadedNames.includes(p.name)).slice(0, 50);
+    
+    if (remainingPokemon.length > 0) {
+      setIsFilterLoading(true);
+      loadPokemonDetails(remainingPokemon).finally(() => {
+        setIsFilterLoading(false);
+      });
+    }
   }
 
   const handleStartCompare = () => {
@@ -549,6 +593,20 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
                 </Button>
               </div>
             )}
+          {filters.types.length > 0 && Object.keys(pokemonDetails).length < allPokemon.length && (
+            <div className="flex justify-center mt-8">
+              <Button onClick={handleLoadMoreTypeResults} disabled={isFilterLoading} className="bg-red-600 hover:bg-red-700">
+                {isFilterLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cargando...
+                  </>
+                ) : (
+                  "Cargar más resultados"
+                )}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
