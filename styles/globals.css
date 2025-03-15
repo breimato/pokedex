@@ -84,6 +84,42 @@ body {
   }
 }
 
+/* Animaciones para la Pokédex */
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(100%);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+}
+
+@keyframes scan-v {
+  0% {
+    transform: translateX(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(-100%);
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0.6;
+  }
+}
+
+/* Fondos para las tarjetas de Pokémon por tipo */
+.bg-gray-850 {
+  background-color: #141414;
+}
+
 @layer base {
   * {
     @apply border-border;
