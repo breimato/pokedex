@@ -45,6 +45,10 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
   const [filters, setFilters] = useState<FilterOptions>({ types: [], generations: [] })
   const [pokemonDetails, setPokemonDetails] = useState<Record<string, PokemonDetails>>({})
   const [isFilterLoading, setIsFilterLoading] = useState(false)
+  
+  // Estado para la búsqueda en tiempo real
+  const [searchResults, setSearchResults] = useState<Pokemon[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   // Estado para el comparador
   const [compareMode, setCompareMode] = useState(false)
@@ -94,6 +98,50 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     }
   }
 
+  // Nueva función para buscar Pokémon en tiempo real
+  const searchPokemonByName = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSearchResults([])
+      return
+    }
+    
+    setIsSearching(true)
+    
+    try {
+      // Primero verificamos si ya tenemos el Pokémon en la lista actual
+      const existingPokemon = allPokemon.filter(p => 
+        p.name.toLowerCase().includes(query.toLowerCase())
+      )
+      
+      // Si ya tenemos resultados locales, los usamos
+      if (existingPokemon.length > 0) {
+        setSearchResults(existingPokemon)
+        setIsSearching(false)
+        return
+      }
+      
+      // Si no encontramos localmente, hacemos una búsqueda en la API
+      const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=1000`)
+      const data: PokemonListResponse = await response.json()
+      
+      // Filtramos los resultados que coinciden con la búsqueda
+      const matchingPokemon = data.results.filter(p => 
+        p.name.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 20) // Limitamos a 20 resultados
+      
+      setSearchResults(matchingPokemon)
+      
+      // Cargamos los detalles de estos Pokémon para mostrarlos
+      if (matchingPokemon.length > 0) {
+        await loadPokemonDetails(matchingPokemon)
+      }
+    } catch (error) {
+      console.error("Error searching Pokémon:", error)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
   // Efecto para reiniciar el estado cuando cambia la clave
   useEffect(() => {
     setAllPokemon([])
@@ -104,6 +152,7 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     setShowCompareModal(false)
     setInitialLoading(true)
     setFiltersApplied(false)
+    setSearchResults([])
     
     fetchPokemon()
   }, [key])
@@ -117,6 +166,17 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
       // Cleanup cuando el componente se desmonta
     }
   }, [])
+  
+  // Efecto para realizar búsquedas cuando cambia el término de búsqueda
+  useEffect(() => {
+    // Solo realizamos la búsqueda si hay un término de búsqueda
+    if (searchTerm && searchTerm.length >= 2) {
+      searchPokemonByName(searchTerm)
+    } else {
+      // Si no hay término de búsqueda, limpiamos los resultados
+      setSearchResults([])
+    }
+  }, [searchTerm])
 
   // Rango de ID de Pokémon por generación
   const generationRanges = {
@@ -368,6 +428,11 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
 
   // Filtrar Pokémon según la búsqueda y filtros
   const filteredPokemon = useMemo(() => {
+    // Si hay resultados de búsqueda, los usamos en lugar de la lista normal
+    if (searchTerm && searchTerm.length >= 2 && searchResults.length > 0) {
+      return searchResults;
+    }
+    
     // Crear un Set con los nombres de los Pokémon para evitar duplicados
     const uniqueNames = new Set<string>()
     const uniquePokemon: Pokemon[] = []
@@ -401,7 +466,7 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     }
 
     return filtered
-  }, [allPokemon, searchTerm, filters.types, pokemonDetails])
+  }, [allPokemon, searchTerm, filters.types, pokemonDetails, searchResults])
 
   // Obtener todos los tipos disponibles a partir de los detalles cargados
   const availableTypes = useMemo(() => {
@@ -555,11 +620,11 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
         />
       )}
 
-      {/* Indicador de carga durante filtrado */}
-      {isFilterLoading && (
+      {/* Indicador de carga durante filtrado o búsqueda */}
+      {(isFilterLoading || isSearching) && (
         <div className="text-center py-4 mb-4 bg-gray-900 rounded-lg">
           <Loader2 className="h-6 w-6 animate-spin text-red-500 inline mr-2" />
-          <span>Cargando Pokémon para aplicar filtros...</span>
+          <span>{isSearching ? "Buscando Pokémon..." : "Cargando Pokémon para aplicar filtros..."}</span>
         </div>
       )}
 
