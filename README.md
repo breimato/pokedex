@@ -4,7 +4,7 @@
 
 Una aplicación moderna de Pokedex construida con Next.js, React y TypeScript que te permite explorar y descubrir todos los Pokémon de una manera interactiva y atractiva.
 
-![Pokedex App](https://via.placeholder.com/800x400?text=Pokedex+App)
+![Pokedex App](/public/images/main_page.png)
 
 ## ✨ Características
 
@@ -81,9 +81,21 @@ Selecciona dos Pokémon y compara sus:
 
 ## 📱 Capturas de pantalla
 
-![Lista de Pokémon](https://via.placeholder.com/400x250?text=Lista+de+Pokemon)
-![Detalle de Pokémon](https://via.placeholder.com/400x250?text=Detalle+de+Pokemon)
-![Comparación de Pokémon](https://via.placeholder.com/400x250?text=Comparacion+de+Pokemon)
+### 🏠 Página Principal
+![Página principal de la Pokedex](/public/images/main_page.png)
+*Interfaz principal con tarjetas de Pokémon, barra de búsqueda y filtros por tipo y generación.*
+
+### 🔍 Búsqueda de Pokémon
+![Funcionalidad de búsqueda](/public/images/busqueda.png)
+*Funcionalidad de búsqueda en tiempo real que permite encontrar cualquier Pokémon mientras escribes.*
+
+### 📊 Vista Detallada
+![Vista detallada de Pokémon](/public/images/vista_detalle.png)
+*Vista detallada de Pokémon mostrando estadísticas, altura, peso e información completa.*
+
+### 🔄 Comparación de Pokémon
+![Comparación entre Pokémon](/public/images/comparacion.png)
+*Modal de comparación mostrando estadísticas lado a lado y efectividad de tipos entre dos Pokémon.*
 
 ## 🔄 Próximas actualizaciones
 
