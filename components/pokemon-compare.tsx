@@ -180,10 +180,13 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
               <div className="flex gap-2 justify-center mb-4">
                 {pokemon1.types.map((typeInfo) => {
                   const typeClass = `type-${typeInfo.type.name}`;
+                  const typeColor = getTypeColor(typeInfo.type.name);
                   return (
                     <span
                       key={typeInfo.type.name}
-                      className={`pokemon-type ${typeClass}`}
+                      className={`pokemon-type ${typeClass} text-white px-2 py-1 rounded text-xs font-medium`}
+                      style={{ backgroundColor: typeColor }}
+                      data-component-name="PokemonCompare"
                     >
                       {typeInfo.type.name}
                     </span>
@@ -295,10 +298,13 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
               <div className="flex gap-2 justify-center mb-4">
                 {pokemon2.types.map((typeInfo) => {
                   const typeClass = `type-${typeInfo.type.name}`;
+                  const typeColor = getTypeColor(typeInfo.type.name);
                   return (
                     <span
                       key={typeInfo.type.name}
-                      className={`pokemon-type ${typeClass}`}
+                      className={`pokemon-type ${typeClass} text-white px-2 py-1 rounded text-xs font-medium`}
+                      style={{ backgroundColor: typeColor }}
+                      data-component-name="PokemonCompare"
                     >
                       {typeInfo.type.name}
                     </span>
