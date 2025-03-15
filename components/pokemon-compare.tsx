@@ -115,20 +115,59 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
   const pokemon1Advantage = calculateTypeAdvantage(pokemon1Types, pokemon2Types)
   const pokemon2Advantage = calculateTypeAdvantage(pokemon2Types, pokemon1Types)
 
+  const getStatName = (statName: string) => {
+    switch (statName) {
+      case "hp":
+        return "HP"
+      case "attack":
+        return "Ataque"
+      case "defense":
+        return "Defensa"
+      case "special-attack":
+        return "Ataque Esp."
+      case "special-defense":
+        return "Defensa Esp."
+      case "speed":
+        return "Velocidad"
+      default:
+        return statName
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Comparación de Pokémon</h2>
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-800">
+      <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border-2 border-gray-700 shadow-lg">
+        <div className="p-6 relative">
+          {/* Líneas de circuito decorativas */}
+          <div className="absolute inset-0 opacity-5 pointer-events-none">
+            <div className="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
+            <div className="absolute top-0 right-0 w-1 h-full bg-green-500"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-green-500"></div>
+            <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+            
+            <div className="absolute top-5 left-5 w-20 h-1 bg-green-500"></div>
+            <div className="absolute top-5 left-5 w-1 h-20 bg-green-500"></div>
+            <div className="absolute bottom-5 right-5 w-20 h-1 bg-green-500"></div>
+            <div className="absolute bottom-5 right-5 w-1 h-20 bg-green-500"></div>
+          </div>
+          
+          <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+            <h2 className="text-2xl font-bold text-green-400 flex items-center">
+              <div className="w-3 h-3 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+              Comparación de Pokémon
+            </h2>
+            <button 
+              onClick={onClose} 
+              className="p-1 rounded-full hover:bg-red-700 bg-red-600/80 text-white shadow-md transition-colors"
+              aria-label="Cerrar comparación"
+            >
               <X className="h-6 w-6" />
             </button>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            {/* Columna Pokémon 1 */}
-            <div className="flex flex-col items-center">
+            {/* Columna del primer Pokémon */}
+            <div className="flex flex-col items-center bg-gray-800/30 p-4 rounded-lg border border-gray-700">
               <div className="relative h-32 w-32 mb-2">
                 <Image
                   src={pokemon1.sprites.other["official-artwork"].front_default || "/placeholder.svg"}
@@ -139,94 +178,111 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
               </div>
               <h3 className="text-xl font-bold capitalize mb-2">{pokemon1.name}</h3>
               <div className="flex gap-2 justify-center mb-4">
-                {pokemon1.types.map((typeInfo) => (
-                  <span
-                    key={typeInfo.type.name}
-                    className="px-2 py-1 rounded text-xs font-semibold"
-                    style={{
-                      backgroundColor: getTypeColor(typeInfo.type.name),
-                      color: "#fff",
-                    }}
-                  >
-                    {typeInfo.type.name}
-                  </span>
-                ))}
+                {pokemon1.types.map((typeInfo) => {
+                  const typeClass = `type-${typeInfo.type.name}`;
+                  return (
+                    <span
+                      key={typeInfo.type.name}
+                      className={`pokemon-type ${typeClass}`}
+                    >
+                      {typeInfo.type.name}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
             {/* Columna central - Comparativa */}
-            <div className="border-x border-gray-700 px-4">
+            <div className="border-x border-gray-700 px-4 bg-gray-800/20 rounded-lg">
               <div className="text-center mb-4">
-                <h4 className="font-semibold mb-2">Efectividad de tipos</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <h4 className="font-semibold mb-2 text-green-400">Efectividad de tipos</h4>
+                <div className="flex flex-col gap-2 text-sm">
                   <div
-                    className={`p-2 rounded ${pokemon1Advantage > 1 ? "bg-green-900" : pokemon1Advantage < 1 ? "bg-red-900" : "bg-gray-800"}`}
+                    className={`p-2 rounded border ${
+                      pokemon1Advantage > 1 
+                        ? "bg-green-900/50 border-green-700 text-green-300" 
+                        : pokemon1Advantage < 1 
+                          ? "bg-red-900/50 border-red-700 text-red-300" 
+                          : "bg-gray-800/50 border-gray-700 text-yellow-300"
+                    }`}
                   >
-                    {pokemon1.name} → {pokemon2.name}: {pokemon1Advantage}x
+                    <span className="capitalize font-medium">{pokemon1.name}</span> 
+                    <span className="mx-1">→</span> 
+                    <span className="capitalize font-medium">{pokemon2.name}</span>: 
+                    <span className="ml-1 font-bold">{pokemon1Advantage}x</span>
                   </div>
                   <div
-                    className={`p-2 rounded ${pokemon2Advantage > 1 ? "bg-green-900" : pokemon2Advantage < 1 ? "bg-red-900" : "bg-gray-800"}`}
+                    className={`p-2 rounded border ${
+                      pokemon2Advantage > 1 
+                        ? "bg-green-900/50 border-green-700 text-green-300" 
+                        : pokemon2Advantage < 1 
+                          ? "bg-red-900/50 border-red-700 text-red-300" 
+                          : "bg-gray-800/50 border-gray-700 text-yellow-300"
+                    }`}
                   >
-                    {pokemon2.name} → {pokemon1.name}: {pokemon2Advantage}x
+                    <span className="capitalize font-medium">{pokemon2.name}</span> 
+                    <span className="mx-1">→</span> 
+                    <span className="capitalize font-medium">{pokemon1.name}</span>: 
+                    <span className="ml-1 font-bold">{pokemon2Advantage}x</span>
                   </div>
                 </div>
               </div>
 
-              <h4 className="font-semibold text-center mb-2">Estadísticas</h4>
+              <h4 className="font-semibold text-center mb-2 text-green-400">Estadísticas</h4>
               {pokemon1.stats.map((stat, index) => {
                 const stat1 = stat.base_stat
                 const stat2 = pokemon2.stats[index].base_stat
-                const statName = (() => {
-                  switch (stat.stat.name) {
-                    case "hp":
-                      return "HP"
-                    case "attack":
-                      return "Ataque"
-                    case "defense":
-                      return "Defensa"
-                    case "special-attack":
-                      return "Ataque Esp."
-                    case "special-defense":
-                      return "Defensa Esp."
-                    case "speed":
-                      return "Velocidad"
-                    default:
-                      return stat.stat.name
-                  }
-                })()
-
+                const statName = getStatName(stat.stat.name)
                 return (
                   <div key={stat.stat.name} className="mb-3">
                     <div className="flex justify-between text-xs mb-1">
-                      <span>{stat1}</span>
-                      <span className="font-medium">{statName}</span>
-                      <span>{stat2}</span>
+                      <span className={stat1 > stat2 ? "text-green-400 font-bold" : stat1 < stat2 ? "text-red-400" : "text-yellow-400"}>
+                        {stat1}
+                      </span>
+                      <span className="font-medium text-gray-300">{statName}</span>
+                      <span className={stat2 > stat1 ? "text-green-400 font-bold" : stat2 < stat1 ? "text-red-400" : "text-yellow-400"}>
+                        {stat2}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Progress
-                        value={stat1}
-                        max={255}
-                        className="h-2 bg-gray-700"
-                        indicatorClassName={
-                          stat1 > stat2 ? "bg-green-500" : stat1 < stat2 ? "bg-red-500" : "bg-blue-500"
-                        }
-                      />
-                      <Progress
-                        value={stat2}
-                        max={255}
-                        className="h-2 bg-gray-700 rotate-180"
-                        indicatorClassName={
-                          stat2 > stat1 ? "bg-green-500" : stat2 < stat1 ? "bg-red-500" : "bg-blue-500"
-                        }
-                      />
+                    <div className="flex flex-col gap-1">
+                      <div 
+                        className={`progress-container ${
+                          stat1 > stat2 
+                            ? "progress-higher" 
+                            : stat1 < stat2 
+                              ? "progress-lower" 
+                              : "progress-equal"
+                        }`}
+                      >
+                        <Progress
+                          value={stat1}
+                          max={255}
+                          className="h-2 bg-gray-700"
+                        />
+                      </div>
+                      <div 
+                        className={`progress-container ${
+                          stat2 > stat1 
+                            ? "progress-higher" 
+                            : stat2 < stat1 
+                              ? "progress-lower" 
+                              : "progress-equal"
+                        }`}
+                      >
+                        <Progress
+                          value={stat2}
+                          max={255}
+                          className="h-2 bg-gray-700 rotate-180"
+                        />
+                      </div>
                     </div>
                   </div>
                 )
               })}
             </div>
 
-            {/* Columna Pokémon 2 */}
-            <div className="flex flex-col items-center">
+            {/* Columna del segundo Pokémon */}
+            <div className="flex flex-col items-center bg-gray-800/30 p-4 rounded-lg border border-gray-700">
               <div className="relative h-32 w-32 mb-2">
                 <Image
                   src={pokemon2.sprites.other["official-artwork"].front_default || "/placeholder.svg"}
@@ -237,18 +293,17 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
               </div>
               <h3 className="text-xl font-bold capitalize mb-2">{pokemon2.name}</h3>
               <div className="flex gap-2 justify-center mb-4">
-                {pokemon2.types.map((typeInfo) => (
-                  <span
-                    key={typeInfo.type.name}
-                    className="px-2 py-1 rounded text-xs font-semibold"
-                    style={{
-                      backgroundColor: getTypeColor(typeInfo.type.name),
-                      color: "#fff",
-                    }}
-                  >
-                    {typeInfo.type.name}
-                  </span>
-                ))}
+                {pokemon2.types.map((typeInfo) => {
+                  const typeClass = `type-${typeInfo.type.name}`;
+                  return (
+                    <span
+                      key={typeInfo.type.name}
+                      className={`pokemon-type ${typeClass}`}
+                    >
+                      {typeInfo.type.name}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -257,4 +312,3 @@ export function PokemonCompare({ pokemon1, pokemon2, onClose }: PokemonComparePr
     </div>
   )
 }
-

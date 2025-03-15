@@ -159,11 +159,10 @@ export function PokemonCard({ name, url, onCompare, isInCompare = false, onLoad 
   return (
     <Link href={`/pokemon/${pokemon?.id}`}>
       <Card
-        className={`overflow-hidden transition-all duration-300 ${
-          isHovered ? "transform scale-105" : ""
-        } ${isInCompare ? "border-2 border-red-500" : ""}`}
+        className={`overflow-hidden transition-all duration-300 relative rounded-lg ${
+          isHovered ? "transform scale-[1.02]" : ""
+        } ${isInCompare ? "ring-2 ring-red-500" : ""} card-bg-${mainType}`}
         style={{
-          backgroundColor: isHovered ? typeColor : "#111",
           borderColor: isHovered ? typeColor : "#333",
         }}
         onMouseEnter={() => {
@@ -177,46 +176,67 @@ export function PokemonCard({ name, url, onCompare, isInCompare = false, onLoad 
           setShowAnimated(false)
         }}
       >
-        <CardContent className="p-4 flex flex-col items-center">
+        {/* Elemento decorativo de Pokédex */}
+        <div className={`absolute top-0 left-0 w-full h-2 type-bg-${mainType}`}></div>
+        
+        {/* ID de Pokémon en formato Pokédex */}
+        {pokemon && (
+          <div className="absolute top-2 right-3 text-xs font-mono text-gray-400">
+            #{pokemon.id.toString().padStart(3, "0")}
+          </div>
+        )}
+        
+        <CardContent className="p-4 flex flex-col items-center pt-6">
           {loading || !pokemon ? (
             <>
-              <Skeleton className="h-40 w-40 rounded-md mb-4" />
-              <Skeleton className="h-6 w-32" />
+              <div className="relative h-32 w-32 mb-4 bg-gray-800/50 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-2 rounded-full bg-black/40 flex items-center justify-center">
+                  <Skeleton className="h-24 w-24 rounded-full" />
+                </div>
+              </div>
+              <Skeleton className="h-6 w-32 mb-2" />
+              <Skeleton className="h-4 w-20" />
             </>
           ) : (
             <>
-              <div className="relative h-40 w-40 mb-4">
-                {showAnimated && animatedSprite ? (
-                  <Image
-                    src={animatedSprite || "/placeholder.svg"}
-                    alt={pokemon.name}
-                    fill
-                    className="object-contain scale-[1.2]"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                ) : (
-                  <Image
-                    src={
-                      pokemon.sprites.other["official-artwork"].front_default || "/placeholder.svg?height=160&width=160"
-                    }
-                    alt={pokemon.name}
-                    fill
-                    className="object-contain"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    priority={pokemon.id <= 20}
-                  />
-                )}
+              <div className="relative h-32 w-32 mb-4 bg-gray-800/50 rounded-full flex items-center justify-center overflow-hidden border border-gray-700">
+                <div className="absolute inset-2 rounded-full bg-black/40 flex items-center justify-center">
+                  {showAnimated && animatedSprite ? (
+                    <Image
+                      src={animatedSprite || "/placeholder.svg"}
+                      alt={pokemon.name}
+                      width={80}
+                      height={80}
+                      className="object-contain scale-[1.2]"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <Image
+                      src={
+                        pokemon.sprites.other["official-artwork"].front_default || "/placeholder.svg?height=160&width=160"
+                      }
+                      alt={pokemon.name}
+                      width={80}
+                      height={80}
+                      className="object-contain"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      priority={pokemon.id <= 20}
+                    />
+                  )}
+                </div>
+                {/* Pequeño indicador LED */}
+                <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
               </div>
-              <div className="text-center">
-                <h3 className="text-xl font-bold capitalize mb-2">{pokemon.name}</h3>
-                <div className="flex gap-2 justify-center">
+              
+              <div className="text-center w-full">
+                <h3 className="text-lg font-bold capitalize mb-2 text-white">{pokemon.name}</h3>
+                <div className="flex gap-1 justify-center flex-wrap">
                   {pokemon.types.map((typeInfo) => (
                     <span
                       key={typeInfo.type.name}
-                      className="px-2 py-1 rounded text-xs font-semibold"
+                      className={`type-badge type-bg-${typeInfo.type.name}-light type-text-${typeInfo.type.name} type-border-${typeInfo.type.name}`}
                       style={{
-                        backgroundColor: getTypeColor(typeInfo.type.name),
-                        color: "#fff",
+                        border: `1px solid ${getTypeColor(typeInfo.type.name)}80`
                       }}
                     >
                       {typeInfo.type.name}
@@ -224,15 +244,30 @@ export function PokemonCard({ name, url, onCompare, isInCompare = false, onLoad 
                   ))}
                 </div>
 
+                {/* Barra de estadísticas simple */}
+                <div className="w-full mt-3 px-2">
+                  <div className="w-full h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 type-bg-${mainType}`}
+                      style={{ 
+                        width: `${((pokemon.stats.find(s => s.stat.name === "hp")?.base_stat || 50) / 255) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+
                 {onCompare && (
                   <button
                     onClick={handleCompareClick}
-                    className={`mt-3 flex items-center justify-center gap-1 w-full py-1 px-2 rounded text-sm ${
-                      isInCompare ? "bg-red-700 hover:bg-red-800" : "bg-gray-700 hover:bg-gray-600"
+                    className={`mt-3 flex items-center justify-center gap-1 w-full py-1 px-2 rounded text-sm transition-colors ${
+                      isInCompare 
+                        ? "bg-red-700 hover:bg-red-800 text-white" 
+                        : "bg-gray-800 hover:bg-gray-700 text-gray-300"
                     }`}
+                    aria-label={isInCompare ? "Quitar de comparación" : "Añadir a comparación"}
                   >
-                    <PlusCircle className="h-4 w-4" />
-                    {isInCompare ? "Seleccionado" : "Comparar"}
+                    <PlusCircle className="h-3 w-3" />
+                    <span>{isInCompare ? "Seleccionado" : "Comparar"}</span>
                   </button>
                 )}
               </div>

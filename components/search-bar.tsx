@@ -17,18 +17,24 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   }, [searchTerm, onSearch])
 
   return (
-    <div className="flex gap-2 max-w-md mx-auto mb-6">
+    <div className="flex flex-col gap-2 max-w-md mx-auto">
       <div className="relative w-full">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center">
+          <Search className="h-5 w-5 text-red-300" />
+        </div>
         <Input
           type="text"
           placeholder="Buscar Pokémon..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-gray-900 border-gray-700 pl-10"
+          className="bg-black/20 text-white border-gray-700 pl-10 rounded-full h-12 placeholder:text-gray-300 transition-all duration-200 focus:ring-2 focus:ring-yellow-400 focus:border-transparent hover:bg-black/30"
         />
+      </div>
+      <div className="flex justify-center gap-2 mt-1">
+        <div className="w-2 h-2 rounded-full bg-red-400"></div>
+        <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+        <div className="w-2 h-2 rounded-full bg-green-400"></div>
       </div>
     </div>
   )
 }
-

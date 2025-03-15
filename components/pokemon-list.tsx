@@ -5,7 +5,7 @@ import { PokemonCard, type PokemonDetails } from "@/components/pokemon-card"
 import { FilterPanel, type FilterOptions } from "@/components/filter-panel"
 import { PokemonCompare } from "@/components/pokemon-compare"
 import { Button } from "@/components/ui/button"
-import { Loader2, BarChart2 } from "lucide-react"
+import { Loader2, BarChart2, X } from "lucide-react"
 import Image from "next/image"
 
 interface Pokemon {
@@ -362,6 +362,10 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
     return selectedForCompare.some((p) => p.id === pokemonId)
   }
 
+  const handleRemoveFromCompare = (pokemonId: number) => {
+    setSelectedForCompare((prev) => prev.filter((p) => p.id !== pokemonId))
+  }
+
   // Filtrar Pokémon según la búsqueda y filtros
   const filteredPokemon = useMemo(() => {
     // Crear un Set con los nombres de los Pokémon para evitar duplicados
@@ -506,25 +510,36 @@ export function PokemonList({ searchTerm = "" }: PokemonListProps) {
 
       {/* Mostrar seleccionados para comparar */}
       {compareMode && selectedForCompare.length > 0 && (
-        <div className="bg-gray-900 p-4 rounded-lg mb-6">
+        <div className="bg-gray-900/80 p-4 rounded-lg mb-6 border border-gray-800 shadow-lg backdrop-blur-sm">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold">Pokémon seleccionados: {selectedForCompare.length}/2</h3>
+            <h3 className="font-semibold text-green-400 flex items-center">
+              <div className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+              Pokémon seleccionados: {selectedForCompare.length}/2
+            </h3>
             {selectedForCompare.length === 2 && (
-              <Button onClick={() => setShowCompareModal(true)} className="bg-red-600 hover:bg-red-700">
+              <Button onClick={() => setShowCompareModal(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-md">
+                <BarChart2 className="mr-2 h-4 w-4" />
                 Ver comparación
               </Button>
             )}
           </div>
           <div className="flex gap-4">
             {selectedForCompare.map((pokemon) => (
-              <div key={pokemon.id} className="flex items-center gap-2">
+              <div key={pokemon.id} className="flex items-center gap-2 bg-gray-800/50 p-2 rounded-md border border-gray-700">
                 <Image
-                  src={pokemon.sprites.front_default || "/placeholder.svg"}
+                  src={pokemon.sprites.front_default}
                   alt={pokemon.name}
                   width={40}
                   height={40}
                 />
                 <span className="capitalize">{pokemon.name}</span>
+                <button 
+                  onClick={() => handleRemoveFromCompare(pokemon.id)}
+                  className="ml-2 p-1 rounded-full hover:bg-red-700/50 text-red-400 hover:text-white transition-colors"
+                  aria-label={`Eliminar ${pokemon.name} de la comparación`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </div>
