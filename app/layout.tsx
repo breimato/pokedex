@@ -8,8 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Pokédex - Explora el mundo Pokémon",
-  description: "Descubre información sobre todos los Pokémon con nuestra Pokédex interactiva",
-    generator: 'v0.dev'
+  description: "Descubre información sobre todos los Pokémon con nuestra Pokédex interactiva"
 }
 
 export default function RootLayout({
